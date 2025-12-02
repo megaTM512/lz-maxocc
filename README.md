@@ -6,7 +6,7 @@ LZ-MAXOCC takes a lempel-ziv compressed file as input and changes the referenced
 
 ```bash
 make
-./lz-maxocc -i <input_file> -o <output_file>
+./lz-maxocc -i <input_file> -o <output_file> # Output file without file extension
 ```
 
 ## Output
