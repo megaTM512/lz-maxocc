@@ -253,20 +253,20 @@ int main(int argc, char* argv[]) {
       maxHeightAfter = h;
     }
   }
+  averageHeightAfter /= newHeights.size();
   double varianceHeightAfter = 0;
   for (uint64_t h : newHeights) {
     varianceHeightAfter += (h - averageHeightAfter) * (h - averageHeightAfter);
   }
   varianceHeightAfter /= newHeights.size();
-  averageHeightAfter /= newHeights.size();
   std::cout << "Average height after: " << averageHeightAfter << std::endl;
   std::cout << "Max height after: " << maxHeightAfter << std::endl;
   std::cout << "Variance height after: " << varianceHeightAfter << std::endl;
 
   // Save to CSV
   {
-    if (!std::filesystem::exists("lz-maxocc_results.csv")) {
-      std::fstream resultcsv("lz-maxocc_results.csv",
+    if (!std::filesystem::exists("./lz-maxocc_results.csv")) {
+      std::fstream resultcsv("./lz-maxocc_results.csv",
                              std::ios::out | std::ios::app);
       resultcsv << "Timestamp,"
                 << "Algorithm,"
@@ -287,7 +287,7 @@ int main(int argc, char* argv[]) {
     std::string timestamp = std::ctime(&now_time);  // Has newline at end
     timestamp.erase(std::remove(timestamp.begin(), timestamp.end(), '\n'),
                     timestamp.end());
-    std::fstream resultcsv("lz-maxocc_results.csv",
+    std::fstream resultcsv("./lz-maxocc_results.csv",
                            std::ios::out | std::ios::app);
     resultcsv << timestamp << "," << "LZ-MAXOCC" << "," << inputFile << ","
               << inputPhrases.size() << "," << averageHeightBefore << ","
