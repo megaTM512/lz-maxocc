@@ -138,14 +138,16 @@ std::vector<int> heightAnalysis(const std::vector<PhraseC>& phrases) {
 std::vector<PhraseC> lzmaxocc(std::vector<PhraseC>& phrases) {
   // Phrase Decoding
   std::string text = decodePhrasesToString(phrases);
-  atcoder::segtree<uint32_t, _max, _e> h(text.size());
-  auto heights = heightAnalysis(phrases);
-  for (size_t i = 0; i < text.size(); ++i) {
-    h.set(i, heights[i]);
+  uint64_t n = text.size();
+  // Segment Tree for Height Management
+  atcoder::segtree<uint32_t, _max, _e> h(n);
+  // auto heights = heightAnalysis(phrases);
+  for (uint64_t i = 0; i < text.size(); ++i) {
+    h.set(i, 0);
   }
+
   // Suffix Array construction
   const uint8_t* T = reinterpret_cast<const uint8_t*>(text.data());
-  size_t n = text.size();
   std::vector<int64_t> SA(n);
   int64_t ret = libsais64(T, SA.data(), n, 0, nullptr);
 
@@ -153,34 +155,60 @@ std::vector<PhraseC> lzmaxocc(std::vector<PhraseC>& phrases) {
     std::cerr << "Error constructing suffix array." << std::endl;
     return {};
   }
+
   // Find occurence with minimal max height.
+  uint64_t phrase_start = 0;
   for (auto& phrase : phrases) {
-    auto [L, R] = findFirstAndLastOccurrence(phrase, text, SA);
-    if (L == -1 || R == -1) {
-      continue;  // No occurrence found
+    if (phrase.len == 1) {
+      phrase_start += phrase.len;
+      continue;  // No need to process single character phrases
     }
+
+    auto [L, R] = findFirstAndLastOccurrence(phrase, text, SA);
+    if (L == -1 || R == -1) continue;  // No occurrence found
+
     uint32_t minHeight = UINT32_MAX;
-    uint32_t bestPos = phrase.pos;
+    uint64_t bestPos = phrase.pos;
+
     // For every occurrence, check the max height & find the minimal one
     for (auto occIdx = L; occIdx <= R; ++occIdx) {
-      uint32_t occPos = static_cast<uint32_t>(SA[occIdx]);
-      if (occPos >= phrase.pos) continue;  // Only consider previous occurrences
-      uint32_t curHeight = h.prod(occPos, occPos + phrase.len - 1);
-      if (curHeight < minHeight) {
-        minHeight = curHeight;
+      uint64_t occPos = static_cast<uint64_t>(SA[occIdx]);
+      if (occPos >= phrase_start)
+        continue;  // Only consider previous occurrences
+      uint32_t curOccMaxHeight =
+          h.prod(occPos, occPos + phrase.len);  // Right exclusive
+      if (curOccMaxHeight < minHeight) {
+        minHeight = curOccMaxHeight;
         bestPos = occPos;
       }
     }
-    if (bestPos == phrase.pos) continue;  // No change
-    // Update new heights in segment tree (Does the whole height array need an
-    // update?)
-    for (uint32_t j = 0; j < phrase.len - 1; j++) {
-      uint32_t pos = bestPos + j;
-      if (pos >= phrases.size()) break;
-      uint32_t newHeight = (j + 1 < phrase.len - 1) ? heights[pos] : 0;
-      h.set(pos, newHeight);
+
+    // Update new heights in segment tree
+    // For every copied character...
+    for (uint64_t j = 0; j < phrase.len - 1; j++) {
+      uint64_t sourcePos = bestPos + j;
+      uint32_t newHeight = 0;
+      uint32_t sourceHeight = h.get(sourcePos);
+      if (sourcePos >=
+          phrase_start) {  // Self-Reference does not increase height
+        newHeight = sourceHeight;
+      } else {  // Non-Self-Reference increases height by 1
+        newHeight = sourceHeight + 1;
+      }
+      h.set(phrase_start + j, newHeight);
     }
+    h.set(phrase_start + phrase.len - 1, 0);  // explicit character
     phrase.pos = bestPos;
+    phrase_start += phrase.len;
+  }
+  // Assert that the final state of the segment tree matches the heights. Otherwise there is a bug.
+  std::vector<int> finalHeights = heightAnalysis(phrases);
+  for (uint64_t i = 0; i < n; ++i) {
+    if (h.get(i) != static_cast<uint32_t>(finalHeights[i])) {
+      std::cerr << "Warning: Height mismatch at position " << i
+                << " (segment tree: " << h.get(i)
+                << ", expected: " << finalHeights[i] << ")" << std::endl;
+    }
   }
   return phrases;
 }
